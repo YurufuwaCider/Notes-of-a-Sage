@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YurufuwaCider - Ashen One's Portfolio</title>
+    <!-- Tailwind CSSのロード --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Interフォントを使用 (Tailwindデフォルト) --><style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            /* 荒廃した石畳のような背景 */
+            background-color: #121212;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23232323' fill-opacity='0.6'%3E%3Cpath d='M36 34.721v1.161l-10 4.888v-1.161l10-4.888zm0 1.258v1.077l-10 4.793v-1.077l10-4.793zM5.584 41.564l4.908-1.284 3.447 13.111-4.908 1.284-3.447-13.111zm11.39 12.062l4.908-1.284 3.447 13.111-4.908 1.284-3.447-13.111zm-11.39-12.062l4.908-1.284 3.447 13.111-4.908 1.284-3.447-13.111zM1 39l2 11 11-2-2-11H1zm5-2.586l3.414 3.414L10.5 40l-.586-.586L6 35.828l3.414 3.414L10.5 40l-.586-.586z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        /* カスタムスタイル: ダークソウル風のボタン/枠線 */
+        .ds-button {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 0 0 #4a0404; /* 下の影（血のような赤） */
+            border: 2px solid #5d5d5d;
+        }
+        .ds-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 0 #5d0707;
+            background-color: #27272a; /* hover時の深みを出す */
+        }
+        .ds-container {
+            border: 4px solid #3d3d3d; /* 重厚な境界線 */
+            background-color: rgba(24, 24, 27, 0.95); /* bg-zinc-900 95%透明 */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5); /* 影で浮き上がらせる */
+        }
+
+        /* アイコンの色を炎のような色にする */
+        .icon-flame {
+            color: #d97706; /* amber-600 */
+        }
+    </style>
+</head>
+
+<body class="text-gray-200 min-h-screen flex flex-col">
+
+    <!-- サイトヘッダー (ステータスバー風) --><header class="bg-black/70 p-4 border-b-4 border-amber-600 shadow-xl fixed w-full z-10">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <!-- HPゲージ風要素 --><div class="flex items-center space-x-4">
+                <span class="text-xl font-bold text-amber-500 uppercase tracking-widest">
+                    賢者の手記
+                </span>
+                <div class="w-48 h-4 bg-gray-700 border border-gray-500 rounded-sm">
+                    <!-- HP満タンの表現 --><div class="h-full bg-red-700 rounded-sm" style="width: 100%;"></div>
+                </div>
+                <span id="user-id-display" class="text-xs text-gray-400"></span>
+            </div>
+
+            <!-- ナビゲーション (選択されたページが燃えるような色に) --><nav id="nav-menu" class="flex space-x-6 text-sm font-semibold uppercase">
+                <!-- 「古文書」ページを削除 --><button data-page="home" class="nav-btn transition-colors duration-200 hover:text-red-600 focus:outline-none focus:text-red-700">篝火</button>
+                <button data-page="profile" class="nav-btn transition-colors duration-200 hover:text-red-600 focus:outline-none focus:text-red-700">誓約</button>
+                <button data-page="works" class="nav-btn transition-colors duration-200 hover:text-red-600 focus:outline-none focus:text-red-700">遺物</button>
+                <button data-page="phantoms" class="nav-btn transition-colors duration-200 hover:text-red-600 focus:outline-none focus:text-red-700">幻影</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- メインコンテンツエリア --><main id="main-content" class="flex-grow pt-28 pb-10 flex justify-center items-start">
+        <!-- コンテンツがここに挿入される --><p class="text-gray-500">
+            
+        </p>
+    </main>
+
+    <!-- フッター (石板のフッター風) --><footer class="bg-black/70 p-4 text-center text-xs text-gray-500 border-t-2 border-gray-800">
+        <p>&copy; 2025 Ashen One's Chronicle. All rights reserved. 闇に踏み入り、探求せよ。</p>
+    </footer>
+
+    <!-- Firebase SDKのインポート --><script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Firestore関連のインポートはすべて削除
+
+        // =======================================================
+        // GitHub Pages/ローカル実行対応のためのグローバル変数定義
+        // =======================================================
+
+        // Canvasグローバル変数を安全に取得し、ない場合はデフォルト値を設定
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'github-portfolio-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Firebase初期化に必要な変数
+        let app, auth; // db変数を削除
+        let userId = null;
+        let isAuthReady = false;
+        
+        // Firebase設定が存在する場合のみ初期化を実行
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            // dbの初期化を削除
+            auth = getAuth(app);
+
+            // 認証処理
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                } else if (initialAuthToken) {
+                    // カスタムトークンがある場合、Canvas環境でのサインインを試みる
+                    try {
+                        const result = await signInWithCustomToken(auth, initialAuthToken);
+                        userId = result.user.uid;
+                    } catch (error) {
+                        console.error("Custom token sign-in failed, signing in anonymously.", error);
+                        await signInAnonymously(auth);
+                        userId = auth.currentUser.uid;
+                    }
+                } else {
+                    // GitHub/ローカル環境など、トークンがない場合は匿名サインイン
+                    await signInAnonymously(auth);
+                    userId = auth.currentUser.uid;
+                }
+                
+                isAuthReady = true;
+                console.log("Firebase Auth Ready. User ID:", userId);
+                document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                
+                // 認証完了後、初期ページのレンダリングを続行
+                window.dispatchEvent(new Event('auth-ready'));
+            });
+        } else {
+            // Firebase設定がない場合の警告と静的モードでの動作
+            console.warn("GitHub Pages/ローカル実行モード: Firebase設定が存在しないため、認証情報が表示されますが機能しません。");
+            
+            // 静的モードとして動作させる
+            isAuthReady = true;
+            document.getElementById('user-id-display').textContent = `User ID: STATIC_MODE`;
+            window.dispatchEvent(new Event('auth-ready'));
+        }
+
+        // =======================================================
+        // FIREBASE / FIRESTORE 関連関数 (すべて削除)
+        // =======================================================
+
+        // Canvas描画のためのグローバル変数 (すべて削除)
+        // Canvas描画ロジック (すべて削除)
+
+        // =======================================================
+        // ★ 画像URLの定義 (ここを編集して画像を差し替えます) ★
+        // =======================================================
+        const imageUrls = {
+            // メインの横長画像 (1200x400)
+            main: "https://i.imgur.com/8hnrD9J.jpeg",
+            // RTAゴールの正方形画像 (400x400)
+            rta: "https://i.imgur.com/XwtuXuq.jpeg",
+            // 篝火（休息地）の正方形画像 (400x400)
+            bonfire: "https://i.imgur.com/N9LPrk3.jpeg",
+            // CS2クラッチモーメントの正方形画像 (400x400)
+            cs: "https://i.imgur.com/WX8ftVE.jpeg",
+        };
+
+
+        // ページコンテンツのテンプレート (「manuscript」を削除)
+        const pages = {
+            home: `
+                <div class="ds-container w-full max-w-4xl p-10 mt-10 rounded-lg text-center">
+                    <h1 class="text-6xl font-extrabold text-amber-500 tracking-wider mb-6 uppercase">
+                        Welcome, Ashen One.
+                    </h1>
+                    <h2 class="text-2xl text-gray-400 mb-8 font-serif italic">
+                        名もなき者よ、ようこそ。この地は、私の成し遂げた偉業の記録。
+                    </h2>
+                    <p class="text-lg text-gray-300 leading-relaxed">
+                        古き誓約の記録を閲覧するには「誓約」、闇に魅入られた戦場を辿るには「遺物」を選べ。
+                        そして、過去の記憶の残滓を追体験するには「幻影」を選べ。
+                    </p>
+                    <button onclick="window.changePage('profile')" class="mt-8 ds-button text-lg bg-gray-800 text-amber-500 py-3 px-8 rounded-md uppercase font-bold tracking-widest">
+                        旅を始める
+                    </button>
+                </div>
+            `,
+            profile: `
+                <div class="ds-container w-full max-w-4xl p-10 mt-10 rounded-lg">
+                    <h1 class="text-4xl font-bold text-red-600 mb-8 border-b-2 border-gray-700 pb-3 uppercase">
+                        誓約 - 古き誓約の記録
+                    </h1>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <!-- 基本情報 (ステータス) --><div>
+                            <h2 class="text-2xl font-bold text-amber-500 mb-4">基本情報 (Status)</h2>
+                            <dl class="space-y-3 text-left">
+                                <div class="flex justify-between border-b border-gray-800 pb-1">
+                                    <dt class="text-gray-400">名前 / 呼び名:</dt>
+                                    <dd class="font-semibold text-gray-200">YurufuwaCider / てん</dd>
+                                </div>
+                                <div class="flex justify-between border-b border-gray-800 pb-1">
+                                    <dt class="text-gray-400">素性 / Class:</dt>
+                                    <dd class="font-semibold text-gray-200">ゲーマー</dd>
+                                </div>
+                                <div class="flex justify-between border-b border-gray-800 pb-1">
+                                    <dt class="text-gray-400">レベル / Soul Level:</dt>
+                                    <dd class="font-semibold text-gray-200">Lv. ??? (常に成長中)</dd>
+                                </div>
+                                <div class="flex justify-between border-b border-gray-800 pb-1">
+                                    <dt class="text-gray-400">得意な力 / Key Skill:</dt>
+                                    <dd class="font-semibold text-green-400">元RTAプレイヤー　(DarkSouls)</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <!-- ネットワークID (オンラインプレイ) --><div>
+                            <h2 class="text-2xl font-bold text-amber-500 mb-4">オンラインプレイ</h2>
+                            <div class="space-y-4">
+                                <!-- Discord --><div class="bg-zinc-800 p-4 rounded-md border border-gray-700 flex items-center shadow-lg">
+                                    <span class="text-3xl mr-4 icon-flame">&#x2717;</span> <!-- Custom Cross Icon --><div>
+                                        <p class="text-gray-400 text-sm">Discord ID (誓約の合図)</p>
+                                        <p class="text-xl font-mono text-gray-100 break-all">no.ten</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Steam --><div class="bg-zinc-800 p-4 rounded-md border border-gray-700 flex items-center shadow-lg">
+                                    <span class="text-3xl mr-4 icon-flame">&#x2717;</span> <!-- Custom Cross Icon --><div>
+                                        <p class="text-gray-400 text-sm">Steam Profile (異世界の旅人)</p>
+                                        <p class="text-xl font-mono text-gray-100 break-all">YurufuwaCider</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- YouTube (古文書庫) --><div class="bg-zinc-800 p-4 rounded-md border border-gray-700 flex items-center shadow-lg">
+                                    <span class="text-3xl mr-4 icon-flame">&#x2717;</span> <!-- Custom Cross Icon --><div>
+                                        <p class="text-gray-400 text-sm">Youtube (古文書庫)</p>
+                                        <p class="text-xl font-mono text-gray-100 break-all">@kibun_shidai</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="mt-8 text-center text-gray-500 italic">
+                        「...火の消えかけた灰よ、お前はもう用済みだ」 - 賢者
+                    </p>
+                </div>
+            `,
+            works: `
+                <div class="ds-container w-full max-w-6xl p-10 mt-10 rounded-lg">
+                    <h1 class="text-4xl font-bold text-red-600 mb-10 border-b-2 border-gray-700 pb-3 uppercase text-center">
+                        遺物 - 闇に魅入られた戦場
+                    </h1>
+                    
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- 作品カード 1 --><div class="bg-zinc-800 p-6 rounded-lg border-2 border-gray-700 hover:border-amber-600 transition-all duration-300 shadow-xl">
+                            <h3 class="text-xl font-bold text-amber-500 mb-2 uppercase">Counter-Strike2</h3>
+                            <p class="text-sm text-gray-400 mb-4">[FPS]</p>
+                            <p class="text-gray-300 text-sm">
+                                この地に光はもはや無い。
+我が剣も、信仰も、屍の群れには届かぬ。
+ならば我は、逃げる。生の残滓を掴むために――
+                                (ZombiEscape)
+                            </p>
+                            
+                        </div>
+
+                        <!-- 作品カード 2 --><div class="bg-zinc-800 p-6 rounded-lg border-2 border-gray-700 hover:border-amber-600 transition-all duration-300 shadow-xl">
+                            <h3 class="text-xl font-bold text-amber-500 mb-2 uppercase">DarkSouls</h3>
+                            <p class="text-sm text-gray-400 mb-4">[ActionRPG]</p>
+                            <p class="text-gray-300 text-sm">
+                                かつて時を駆ける者であった。
+誰よりも速く、死と絶望の迷宮を踏破せし者――
+だが今、その足は止まり、ただ灰の風に身を委ねるのみ。
+                                (any％黒騎士の斧槍ルート 46:32)
+                            </p>
+                            
+                        </div>
+
+                        <!-- 作品カード 3 --><div class="bg-zinc-800 p-6 rounded-lg border-2 border-gray-700 hover:border-amber-600 transition-all duration-300 shadow-xl">
+                            <h3 class="text-xl font-bold text-amber-500 mb-2 uppercase">skate.</h3>
+                            <p class="text-sm text-gray-400 mb-4">[Action]</p>
+                            <p class="text-gray-300 text-sm">
+                                板に呪を宿し、重力を裏切る者たちが現れた。
+彼らは「滑走者」――
+転倒すれば骨が砕け、転生すればまた滑る。
+死を恐れぬ狂信者たちは、瓦礫と絶望の街を駆け、
+瞬間の“自由”を追い求める。
+                            </p>
+                            
+                        </div>
+                    </div>
+
+                    <div class="mt-12 text-center">
+                        <p class="text-gray-500 italic">
+                            この偉業は、まだ見ぬ世界への導きの光となる。
+                        </p>
+                    </div>
+                </div>
+            `,
+            phantoms: `
+                <div class="ds-container w-full max-w-6xl p-10 mt-10 rounded-lg">
+                    <!-- 画像URLを外部変数から取得するよう修正 -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- 画像 1: ボス戦の瞬間 (横長 - モバイルで全幅、デスクトップで3カラムスパン) --><div class="sm:col-span-2 lg:col-span-3 bg-zinc-800 p-3 rounded-lg border-2 border-gray-700 shadow-xl overflow-hidden">
+                            <img src="${imageUrls.main}" 
+                                alt="Placeholder image of a dramatic boss fight scene" 
+                                class="w-full h-auto rounded-md object-cover transition duration-300 transform hover:scale-[1.01] hover:shadow-2xl"/>
+                        </div>
+
+                        <!-- 画像 2: RTAゴール (正方形) --><div class="bg-zinc-800 p-4 rounded-lg border-2 border-gray-700 shadow-xl">
+                            <!-- 修正: URLを直接貼り付ける代わりに、変数参照を使用するように変更 -->
+                            <img src="${imageUrls.rta}" 
+                                alt="Placeholder image of RTA finish screen" 
+                                class="w-full h-auto rounded-md object-cover transition duration-300 transform hover:scale-[1.05]"/>
+                        </div>
+
+                        <!-- 画像 3: 拠点（篝火）の風景 (正方形) --><div class="bg-zinc-800 p-4 rounded-lg border-2 border-gray-700 shadow-xl">
+                            <img src="${imageUrls.bonfire}" 
+                                alt="Placeholder image of a peaceful bonfire" 
+                                class="w-full h-auto rounded-md object-cover transition duration-300 transform hover:scale-[1.05]"/>
+                        </div>
+                        
+                        <!-- 画像 4: プレイスタイル (正方形) --><div class="bg-zinc-800 p-4 rounded-lg border-2 border-gray-700 shadow-xl">
+                            <img src="${imageUrls.cs}" 
+                                alt="Placeholder image of Counter-Strike 2 clutch moment" 
+                                class="w-full h-auto rounded-md object-cover transition duration-300 transform hover:scale-[1.05]"/>
+                        </div>
+                    </div>
+                </div>
+            `,
+        };
+
+        // =======================================================
+        // SPA NAVIGATION
+        // =======================================================
+
+        const contentEl = document.getElementById('main-content');
+        const navEl = document.getElementById('nav-menu');
+        let currentPage = 'home';
+
+        /**
+         * ページ内容を切り替えて描画する
+         * @param {string} pageName - 描画するページのキー ('home', 'profile', 'works', 'phantoms')
+         */
+        function renderPage(pageName) {
+            // 描画機能がないため、ページ離脱時の保存処理は不要
+            
+            const template = pages[pageName];
+            if (template) {
+                contentEl.style.opacity = '0';
+                setTimeout(() => {
+                    contentEl.innerHTML = template;
+                    updateActiveNav(pageName);
+                    currentPage = pageName;
+                    
+                    // 「古文書」関連のセットアップロジックはすべて削除
+                    
+                    contentEl.style.opacity = '1';
+                }, 300); 
+
+                window.location.hash = pageName;
+            }
+        }
+
+        /**
+         * アクティブなナビゲーションボタンを更新する
+         */
+        function updateActiveNav(activePage) {
+            document.querySelectorAll('.nav-btn').forEach(button => {
+                const isSelected = button.getAttribute('data-page') === activePage;
+                
+                if (isSelected) {
+                    button.classList.add('text-amber-500', 'border-b-2', 'border-red-600');
+                    button.classList.remove('text-gray-200');
+                } else {
+                    button.classList.remove('text-amber-500', 'border-b-2', 'border-red-600');
+                    button.classList.add('text-gray-200');
+                }
+            });
+        }
+
+        /**
+         * 外部からページ切り替えを呼び出すための関数をwindowスコープに公開
+         */
+        window.changePage = function(pageName) {
+            renderPage(pageName);
+        }
+
+        // ナビゲーションメニューにイベントリスナーを設定
+        navEl.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.classList.contains('nav-btn')) {
+                const pageName = target.getAttribute('data-page');
+                window.changePage(pageName);
+            }
+        });
+
+        // ページロード時の初期化処理
+        function startPortfolioApp() {
+            const hash = window.location.hash.substring(1);
+            const initialPage = pages[hash] ? hash : 'home';
+            renderPage(initialPage);
+        }
+        
+        // 認証完了を待ってアプリを初期化 (Firebase設定がない場合は即時実行)
+        if (isAuthReady) {
+             startPortfolioApp();
+        } else {
+            window.addEventListener('auth-ready', startPortfolioApp);
+        }
+
+        // URLハッシュが変わったときの処理 (ブラウザの戻る/進むボタン対応)
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.substring(1);
+            if (pages[hash] && hash !== currentPage) {
+                window.changePage(hash);
+            }
+        });
+
+    </script>
+</body>
+</html>
